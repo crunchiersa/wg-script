@@ -1,9 +1,14 @@
 #!/bin/bash
-##AUTHOR: crunchie
-##DATE: 08.11.2020
-##create_wg_client - Script to create wireguard client configs and update wireguard server config.
-## Version: 1.0
-## Parameters: Script requires the number of configs to be created. If no parameter is passed, it is assumed that one config should be created.
+##AUTHOR: martin
+##DATE: 11.06.2022
+##create_wg_client - Script to create wireguard server and client configs and update existing server configs when adding new client configs.
+## Version: 1.1
+## Parameters: The following parameters can be passed:
+## c - number of configs to be created - only relevant when mode = client
+## m - mode, determine whether a client or server config should be created.
+## q - whether or not a QR-Code should be displayed for the created client configs - only relevant when mode = client
+## n - number of server - determines the number to be put behind "wg" - also relevant for info for which instance the new client is to be configured. The next available ip needs to be filled into the nextip-config file
+
 
 ###############
 ## Functions ##
@@ -16,24 +21,29 @@ if [ "$(id -u)" != "0" ]; then
 fi
 }
 
-check_param () {
-	if [ ! -z $p1 ]; then
-        if [[ $p1 =~ $re ]]; then
-            anzahl=$p1
-            if [ ! -z $p2 ]; then
-                param2=$p2
-			else
-				param2="na"
-            fi
-		else
-			anzahl=1
-			param2=$p1
-		fi
-    else
-        anzahl=1
-		param2="na"
-    fi
+######################
+## Server functions ##
+######################
+
+create_server_key () {
+    /usr/bin/wg genkey | tee /etc/wireguard/server_private_key_wg$nos | /usr/bin/wg pubkey > /etc/wireguard/server_public_key_wg$nos
 }
+
+create_server_config () {
+	echo "[Interface]" >> /etc/wireguard/wg$nos.conf
+	echo "Address = "$iprange"1/32" >> /etc/wireguard/wg$nos.conf
+	echo "PrivateKey = $(cat /etc/wireguard/configs/client_private_key_$1)" >> /etc/wireguard/wg$nos.conf
+	echo "DNS = $dnsserver" >> /etc/wireguard/wg$nos.conf
+}
+
+create_server () {
+    create_server_key
+    create_server_config
+}
+
+######################
+## client functions ##
+######################
 
 create_client_key () {
 	/usr/bin/wg genkey | tee /etc/wireguard/configs/client_private_key_$1 | /usr/bin/wg pubkey > /etc/wireguard/configs/client_public_key_$1
@@ -58,12 +68,12 @@ create_client_config () {
 }
 
 update_server_config () {
-	cp /etc/wireguard/wg0.conf /etc/wireguard/wg0.conf.backup_$datum
-	echo " " >> /etc/wireguard/wg0.conf
-	echo "[Peer]" >> /etc/wireguard/wg0.conf
-	echo "PublicKey = $(cat /etc/wireguard/configs/client_public_key_$1)" >> /etc/wireguard/wg0.conf
-	echo "AllowedIPs = $iprange$fip/32 # INSERT CORRECT NAME" >> /etc/wireguard/wg0.conf
-	echo "PresharedKey = $psk" >> /etc/wireguard/wg0.conf
+	cp /etc/wireguard/wg0.conf /etc/wireguard/wg$nos.conf.backup_$datum
+	echo " " >> /etc/wireguard/wg$nos.conf
+	echo "[Peer]" >> /etc/wireguard/wg$nos.conf
+	echo "PublicKey = $(cat /etc/wireguard/configs/client_public_key_$1)" >> /etc/wireguard/wg$nos.conf
+	echo "AllowedIPs = $iprange$fip/32 # INSERT CORRECT NAME" >> /etc/wireguard/wg$nos.conf
+	echo "PresharedKey = $psk" >> /etc/wireguard/wg$nos.conf
 }
 
 remove_keyfiles () {
@@ -72,8 +82,8 @@ remove_keyfiles () {
 }
 
 restart_wireguard () {
-	/usr/bin/wg-quick down /etc/wireguard/wg0.conf
-	/usr/bin/wg-quick up /etc/wireguard/wg0.conf
+	/usr/bin/wg-quick down /etc/wireguard/wg$nos.conf
+	/usr/bin/wg-quick up /etc/wireguard/wg$nos.conf
 }
 
 ###############
@@ -86,46 +96,62 @@ datum=$(date +%Y-%m-%d_%H-%M)						## current date and time.
 re='^[0-9]+$'										## Variable for checking if something is a number.
 source /etc/wireguard/nextip						## GET next available IP.
 source /etc/wireguard/params
-if [ ! -z $1 ]; then
-	p1=$1
-fi
-if [ ! -z $1 ]; then
-	p2=$2
-fi
-if [ ! -z $3 ]; then
-    p3=$3
-fi
-check_param
+usage="Parameter c = number of configs (relevant for client configs only), m = mode (whether a server or client config is to be created), q = mobile (whether client config should be displayed as a QR-code), n = number of server - which wireguard instance should be configured, or for which instance should a client be added."
 
-i=0
-while [ $i -lt $anzahl ]
-do
-	create_client_key $fip
-	psk=$(create_psk)
-	create_client_config $fip $psk
-	update_server_config $fip $psk
-	remove_keyfiles $fip
-	if [ $param2 == "mobile" ]; then
-		echo "Config $(( $fip ))"
-		qrencode -t ansiutf8 < /etc/wireguard/configs/config_$i.conf
-	else
-		echo "###########################Config $(( $fip ))###########################"
-		echo "##########################################################################"
-		echo "$(cat /etc/wireguard/configs/config_$fip.conf)"
-		echo "##########################################################################"
-		echo "##########################################################################"
-	fi
-	rm /etc/wireguard/configs/config_$i.conf
-	i=$(( $i + 1 ))
-	fip=$(( $fip + 1 ))
-done
-echo "fip=$fip" > /etc/wireguard/nextip
-if grep -q wireguard /etc/group; then
-	chown -R root:wireguard /etc/wireguard
+# Check if at least one parameter of some kind was passed.
+if [ ! $# == 0 ]; then
+## GET PARAMETERS AND PUT INTO AN ARRAY
+    while getopts ":hc:m:q:n:" opt; do
+        case $opt in
+            c)      count=("$OPTARG")
+                    ;;
+            m)      modus=("$OPTARG")
+                    ;;
+            q)      param2=("$OPTARG")
+                    ;;
+            n)      nos=("$OPTARG")
+                    ;;
+            h | *)  echo $usage
+                    exit 0
+                    ;;
+        esac
+    done
+    shift $((OPTIND -1))
 else
-	chown -R root:root /etc/wireguard
+    echo $usage
 fi
+
+if [ $modus == "server" ]; then
+    create_server
+elif [ $modus == "client" ]; then
+    i=0
+    while [ $i -lt $count ]
+    do
+	    create_client_key $fip
+	    psk=$(create_psk)
+	    create_client_config $fip $psk
+	    update_server_config $fip $psk
+	    remove_keyfiles $fip
+	    if [ $param2 == "mobile" ]; then
+		    echo "Config $(( $fip ))"
+		    qrencode -t ansiutf8 < /etc/wireguard/configs/config_$i.conf
+	    else
+		    echo "###########################Config $(( $fip ))###########################"
+		    echo "##########################################################################"
+		    echo "$(cat /etc/wireguard/configs/config_$fip.conf)"
+		    echo "##########################################################################"
+		    echo "##########################################################################"
+	    fi
+	    rm /etc/wireguard/configs/config_$i.conf
+	    i=$(( $i + 1 ))
+	    fip=$(( $fip + 1 ))
+    done
+fi
+    echo "fip=$fip" > /etc/wireguard/nextip
+    if grep -q wireguard /etc/group; then
+	    chown -R root:wireguard /etc/wireguard
+    else
+	    chown -R root:root /etc/wireguard
+    fi
 restart_wireguard
 exit 0
-
-
