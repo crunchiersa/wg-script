@@ -21,6 +21,17 @@ if [ "$(id -u)" != "0" ]; then
 fi
 }
 
+check_prereq () {
+    which /usr/bin/wg
+    if [ $? == 1 ]; then
+        sudo apt-get update && sudo apt-get install wireguard
+    fi
+    which /usr/bin/qrencode
+    if [ $? == 1 ]; then
+        sudo apt-get update && sudo apt-get install qrencode
+    fi
+}
+
 ######################
 ## Server functions ##
 ######################
@@ -91,6 +102,7 @@ restart_wireguard () {
 ###############
 
 check_root
+check_prereq
 # Global variables
 datum=$(date +%Y-%m-%d_%H-%M)						## current date and time.
 re='^[0-9]+$'										## Variable for checking if something is a number.
