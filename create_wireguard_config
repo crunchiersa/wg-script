@@ -1,0 +1,131 @@
+#!/bin/bash
+##AUTHOR: crunchie
+##DATE: 08.11.2020
+##create_wg_client - Script to create wireguard client configs and update wireguard server config.
+## Version: 1.0
+## Parameters: Script requires the number of configs to be created. If no parameter is passed, it is assumed that one config should be created.
+
+###############
+## Functions ##
+###############
+
+check_root () {
+if [ "$(id -u)" != "0" ]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+}
+
+check_param () {
+	if [ ! -z $p1 ]; then
+        if [[ $p1 =~ $re ]]; then
+            anzahl=$p1
+            if [ ! -z $p2 ]; then
+                param2=$p2
+			else
+				param2="na"
+            fi
+		else
+			anzahl=1
+			param2=$p1
+		fi
+    else
+        anzahl=1
+		param2="na"
+    fi
+}
+
+create_client_key () {
+	/usr/bin/wg genkey | tee /etc/wireguard/configs/client_private_key_$1 | /usr/bin/wg pubkey > /etc/wireguard/configs/client_public_key_$1
+}
+
+create_psk () {
+	/usr/bin/wg genpsk
+}
+
+create_client_config () {
+	echo "[Interface]" >> /etc/wireguard/configs/config_$1.conf
+	echo "Address = $iprange$fip/32" >> /etc/wireguard/configs/config_$1.conf
+	echo "PrivateKey = $(cat /etc/wireguard/configs/client_private_key_$1)" >> /etc/wireguard/configs/config_$1.conf
+	echo "DNS = $dnsserver" >> /etc/wireguard/configs/config_$1.conf
+	echo " " >> /etc/wireguard/configs/config_$1.conf
+	echo "[Peer]" >> /etc/wireguard/configs/config_$1.conf
+	echo "PublicKey = $(cat /etc/wireguard/publickey)" >> /etc/wireguard/configs/config_$1.conf
+	echo "Endpoint = $endpoint" >> /etc/wireguard/configs/config_$1.conf
+	echo "AllowedIPs = 0.0.0.0/0, ::/0" >> /etc/wireguard/configs/config_$1.conf
+	echo "PersistentKeepalive = 20" >> /etc/wireguard/configs/config_$1.conf
+	echo "PresharedKey = $psk" >> /etc/wireguard/configs/config_$1.conf
+}
+
+update_server_config () {
+	cp /etc/wireguard/wg0.conf /etc/wireguard/wg0.conf.backup_$datum
+	echo " " >> /etc/wireguard/wg0.conf
+	echo "[Peer]" >> /etc/wireguard/wg0.conf
+	echo "PublicKey = $(cat /etc/wireguard/configs/client_public_key_$1)" >> /etc/wireguard/wg0.conf
+	echo "AllowedIPs = $iprange$fip/32 # INSERT CORRECT NAME" >> /etc/wireguard/wg0.conf
+	echo "PresharedKey = $psk" >> /etc/wireguard/wg0.conf
+}
+
+remove_keyfiles () {
+	rm /etc/wireguard/configs/client_private_key_$1
+	rm /etc/wireguard/configs/client_public_key_$1
+}
+
+restart_wireguard () {
+	/usr/bin/wg-quick down /etc/wireguard/wg0.conf
+	/usr/bin/wg-quick up /etc/wireguard/wg0.conf
+}
+
+###############
+## Execution ##
+###############
+
+check_root
+# Global variables
+datum=$(date +%Y-%m-%d_%H-%M)						## current date and time.
+re='^[0-9]+$'										## Variable for checking if something is a number.
+source /etc/wireguard/nextip						## GET next available IP.
+source /etc/wireguard/params
+if [ ! -z $1 ]; then
+	p1=$1
+fi
+if [ ! -z $1 ]; then
+	p2=$2
+fi
+if [ ! -z $3 ]; then
+    p3=$3
+fi
+check_param
+
+i=0
+while [ $i -lt $anzahl ]
+do
+	create_client_key $fip
+	psk=$(create_psk)
+	create_client_config $fip $psk
+	update_server_config $fip $psk
+	remove_keyfiles $fip
+	if [ $param2 == "mobile" ]; then
+		echo "Config $(( $fip ))"
+		qrencode -t ansiutf8 < /etc/wireguard/configs/config_$i.conf
+	else
+		echo "###########################Config $(( $fip ))###########################"
+		echo "##########################################################################"
+		echo "$(cat /etc/wireguard/configs/config_$fip.conf)"
+		echo "##########################################################################"
+		echo "##########################################################################"
+	fi
+	rm /etc/wireguard/configs/config_$i.conf
+	i=$(( $i + 1 ))
+	fip=$(( $fip + 1 ))
+done
+echo "fip=$fip" > /etc/wireguard/nextip
+if grep -q wireguard /etc/group; then
+	chown -R root:wireguard /etc/wireguard
+else
+	chown -R root:root /etc/wireguard
+fi
+restart_wireguard
+exit 0
+
+
