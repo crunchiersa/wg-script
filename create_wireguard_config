@@ -67,7 +67,7 @@ create_client_config () {
         echo "DNS = $dnsserver" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo " " >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "[Peer]" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
-        echo "PublicKey = $(cat /etc/wireguard/publickey)" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "PublicKey = $(cat /etc/wireguard/server_publickey_wg$nos)" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "Endpoint = $endpoint" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "AllowedIPs = 0.0.0.0/0, ::/0" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "PersistentKeepalive = 20" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
