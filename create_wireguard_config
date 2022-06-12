@@ -62,17 +62,17 @@ create_psk () {
 }
 
 create_client_config () {
-        echo "[Interface]" >> /etc/wireguard/configs/config_$1.conf
-        echo "Address = $iprange$fip/32" >> /etc/wireguard/configs/config_$1.conf
-        echo "PrivateKey = $(cat /etc/wireguard/configs/client_private_key_$1)" >> /etc/wireguard/configs/config_$1.conf
-        echo "DNS = $dnsserver" >> /etc/wireguard/configs/config_$1.conf
-        echo " " >> /etc/wireguard/configs/config_$1.conf
-        echo "[Peer]" >> /etc/wireguard/configs/config_$1.conf
-        echo "PublicKey = $(cat /etc/wireguard/publickey)" >> /etc/wireguard/configs/config_$1.conf
-        echo "Endpoint = $endpoint" >> /etc/wireguard/configs/config_$1.conf
-        echo "AllowedIPs = 0.0.0.0/0, ::/0" >> /etc/wireguard/configs/config_$1.conf
-        echo "PersistentKeepalive = 20" >> /etc/wireguard/configs/config_$1.conf
-        echo "PresharedKey = $psk" >> /etc/wireguard/configs/config_$1.conf
+        echo "[Interface]" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "Address = $iprange$fip/32" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "PrivateKey = $(cat /etc/wireguard/configs/client_private_key_$1)" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "DNS = $dnsserver" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo " " >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "[Peer]" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "PublicKey = $(cat /etc/wireguard/publickey)" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "Endpoint = $endpoint" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "AllowedIPs = 0.0.0.0/0, ::/0" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "PersistentKeepalive = 20" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "PresharedKey = $psk" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
 }
 
 update_server_config () {
@@ -147,7 +147,7 @@ elif [ $modus == "client" ]; then
         remove_keyfiles $fip
         if [ $param2 == "mobile" ]; then
             echo "Config $(( $fip ))"
-            qrencode -t ansiutf8 < /etc/wireguard/configs/config_$i.conf
+            qrencode -t ansiutf8 < /etc/wireguard/configs/config_wg"$nos"_"$i".conf
         else
             echo "###########################Config $(( $fip ))###########################"
             echo "##########################################################################"
@@ -155,7 +155,6 @@ elif [ $modus == "client" ]; then
             echo "##########################################################################"
             echo "##########################################################################"
         fi
-        rm /etc/wireguard/configs/config_$i.conf
         i=$(( $i + 1 ))
         fip=$(( $fip + 1 ))
     done
