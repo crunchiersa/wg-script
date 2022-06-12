@@ -39,6 +39,7 @@ create_server_config () {
         echo "[Interface]" >> /etc/wireguard/wg$nos.conf
         echo "Address = "$iprange"1/32" >> /etc/wireguard/wg$nos.conf
         echo "PrivateKey = $(cat /etc/wireguard/server_private_key_wg$nos)" >> /etc/wireguard/wg$nos.conf
+        echo "ListenPort = ""$servport" >> /etc/wireguard/wg$nos.conf
         echo "PostUp = iptables -t nat -A POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
         echo "PostDown = iptables -t nat -D POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
 }
@@ -69,7 +70,7 @@ create_client_config () {
         echo "[Peer]" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "PublicKey = $(cat /etc/wireguard/server_public_key_wg"$nos")" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "Endpoint = $endpoint" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
-        echo "AllowedIPs = 0.0.0.0/0, ::/0" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "AllowedIPs = 0.0.0.0/0" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "PersistentKeepalive = 20" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "PresharedKey = $psk" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
 }

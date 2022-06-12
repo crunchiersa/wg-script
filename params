@@ -1,3 +1,4 @@
 dnsserver="FILL DNS SERVERS!"
 endpoint="FILL ENDPOINT!"
-iprange="FILL IP RANGE!
+iprange="FILL IP RANGE!"
+servport="FILL LISTENPORT!"
