@@ -76,7 +76,7 @@ create_client_config () {
 }
 
 update_server_config () {
-        cp /etc/wireguard/wg0.conf /etc/wireguard/wg$nos.conf.backup_$datum
+        cp /etc/wireguard/wg0.conf /etc/wireguard/conf-backup/wg$nos.conf.backup_$datum
         echo " " >> /etc/wireguard/wg$nos.conf
         echo "[Peer]" >> /etc/wireguard/wg$nos.conf
         echo "PublicKey = $(cat /etc/wireguard/configs/client_public_key_$1)" >> /etc/wireguard/wg$nos.conf
@@ -106,7 +106,11 @@ re='^[0-9]+$'                               ## Variable for checking if somethin
 restartneeded=0
 source /etc/wireguard/nextip                ## GET next available IP, only relevant for client configs. Server IP is always 1
 source /etc/wireguard/params                ## Read certain parameters for config.
-usage="Parameter c = number of configs (relevant for client configs only), m = mode (whether a server or client config is to be created), q = mobile (whether client config should be displayed as a QR-code), n = number of server - which wireguard instance should be configured, or for which instance should a client be added."
+usage=$'Parameter:
+m = mode (whether a server or client config is to be created),
+c = number of configs (relevant for client configs only),
+n = number of server - which wireguard instance should be configured, or for which instance should a client be added,
+q = mobile (whether client config should be displayed as a QR-code).'
 
 # Check if at least one parameter of some kind was passed, if not echo list of parameters and exit.
 if [ ! $# == 0 ]; then
@@ -128,7 +132,7 @@ if [ ! $# == 0 ]; then
     done
     shift $((OPTIND -1))
 else
-    echo $usage
+    echo "$usage"
     exit 0
 fi
 
