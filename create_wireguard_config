@@ -67,7 +67,7 @@ create_client_config () {
         echo "DNS = $dnsserver" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo " " >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "[Peer]" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
-        echo "PublicKey = $(cat /etc/wireguard/server_publickey_wg$nos)" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
+        echo "PublicKey = $(cat /etc/wireguard/server_public_key_wg"$nos")" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "Endpoint = $endpoint" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "AllowedIPs = 0.0.0.0/0, ::/0" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
         echo "PersistentKeepalive = 20" >> /etc/wireguard/configs/config_wg"$nos"_"$1".conf
@@ -150,7 +150,7 @@ elif [ $modus == "client" ]; then
         remove_keyfiles $fip
         if [ $param2 == "mobile" ]; then
             echo "Config $(( $fip ))"
-            qrencode -t ansiutf8 < /etc/wireguard/configs/config_wg"$nos"_"$i".conf
+            qrencode -t ansiutf8 < /etc/wireguard/configs/config_wg"$nos"_"$fip".conf
         else
             echo "###########################Config $(( $fip ))###########################"
             echo "##########################################################################"
