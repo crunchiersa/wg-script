@@ -43,10 +43,10 @@ create_server_key () {
 create_server_config () {
         echo "[Interface]" >> /etc/wireguard/wg$nos.conf
         echo "Address = "$iprange"1/32" >> /etc/wireguard/wg$nos.conf
-        echo "PrivateKey = $(cat /etc/wireguard/configs/client_private_key_$1)" >> /etc/wireguard/wg$nos.conf
+        echo "PrivateKey = $(cat /etc/wireguard/configs/server_private_key_wg$nos)" >> /etc/wireguard/wg$nos.conf
         echo "DNS = $dnsserver" >> /etc/wireguard/wg$nos.conf
-    echo "PostUp = iptables -t nat -A POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
-    echo "PostDown = iptables -t nat -D POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
+        echo "PostUp = iptables -t nat -A POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
+        echo "PostDown = iptables -t nat -D POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
 }
 
 create_server () {
@@ -106,11 +106,11 @@ restart_wireguard () {
 check_root
 check_prereq
 # Global variables
-datum=$(date +%Y-%m-%d_%H-%M)                                           ## current date and time.
-re='^[0-9]+$'                                                                           ## Variable for checking if something is a number.
+datum=$(date +%Y-%m-%d_%H-%M)               ## current date and time.
+re='^[0-9]+$'                               ## Variable for checking if something is a number.
 restartneeded=0
-source /etc/wireguard/nextip                                            ## GET next available IP.
-source /etc/wireguard/params
+source /etc/wireguard/nextip                ## GET next available IP, only relevant for client configs. Server IP is always 1
+source /etc/wireguard/params                ## Read certain parameters for config.
 usage="Parameter c = number of configs (relevant for client configs only), m = mode (whether a server or client config is to be created), q = mobile (whether client config should be displayed as a QR-code), n = number of server - which wireguard instance should be configured, or for which instance should a client be added."
 
 # Check if at least one parameter of some kind was passed, if not echo list of parameters and exit.
