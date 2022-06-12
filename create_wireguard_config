@@ -1,18 +1,14 @@
 #!/bin/bash
-##AUTHOR: martin
-##DATE: 11.06.2022
-##create_wg_client - Script to create wireguard server and client configs and update existing server configs when adding new client configs.
-## Version: 1.1
+##create_wireguard_config - Script to create wireguard server and client configs and update existing server configs when adding new client configs.
 ## Parameters: The following parameters can be passed:
 ## c - number of configs to be created - only relevant when mode = client
 ## m - mode, determine whether a client or server config should be created.
 ## q - whether or not a QR-Code should be displayed for the created client configs - only relevant when mode = client
 ## n - number of server - determines the number to be put behind "wg" - also relevant for info for which instance the new client is to be configured. The next available ip needs to be filled into the nextip-config file
 
-
-###############
-## Functions ##
-###############
+#######################
+## general functions ##
+#######################
 
 check_root () {
 if [ "$(id -u)" != "0" ]; then
@@ -44,7 +40,6 @@ create_server_config () {
         echo "[Interface]" >> /etc/wireguard/wg$nos.conf
         echo "Address = "$iprange"1/32" >> /etc/wireguard/wg$nos.conf
         echo "PrivateKey = $(cat /etc/wireguard/configs/server_private_key_wg$nos)" >> /etc/wireguard/wg$nos.conf
-        echo "DNS = $dnsserver" >> /etc/wireguard/wg$nos.conf
         echo "PostUp = iptables -t nat -A POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
         echo "PostDown = iptables -t nat -D POSTROUTING -o ens192 -j MASQUERADE" >> /etc/wireguard/wg$nos.conf
 }
@@ -145,32 +140,35 @@ elif [ $modus == "client" ]; then
     i=0
     while [ $i -lt $count ]
     do
-            create_client_key $fip
-            psk=$(create_psk)
-            create_client_config $fip $psk
-            update_server_config $fip $psk
-            remove_keyfiles $fip
-            if [ $param2 == "mobile" ]; then
-                    echo "Config $(( $fip ))"
-                    qrencode -t ansiutf8 < /etc/wireguard/configs/config_$i.conf
-            else
-                    echo "###########################Config $(( $fip ))###########################"
-                    echo "##########################################################################"
-                    echo "$(cat /etc/wireguard/configs/config_$fip.conf)"
-                    echo "##########################################################################"
-                    echo "##########################################################################"
-            fi
-            rm /etc/wireguard/configs/config_$i.conf
-            i=$(( $i + 1 ))
-            fip=$(( $fip + 1 ))
+        create_client_key $fip
+        psk=$(create_psk)
+        create_client_config $fip $psk
+        update_server_config $fip $psk
+        remove_keyfiles $fip
+        if [ $param2 == "mobile" ]; then
+            echo "Config $(( $fip ))"
+            qrencode -t ansiutf8 < /etc/wireguard/configs/config_$i.conf
+        else
+            echo "###########################Config $(( $fip ))###########################"
+            echo "##########################################################################"
+            echo "$(cat /etc/wireguard/configs/config_$fip.conf)"
+            echo "##########################################################################"
+            echo "##########################################################################"
+        fi
+        rm /etc/wireguard/configs/config_$i.conf
+        i=$(( $i + 1 ))
+        fip=$(( $fip + 1 ))
     done
     restartneeded=1
 else
     echo "Mode \""$modus"\" is not a valid mode. Please pass a valid mode."
+    exit 0
 fi
 
-# write current ip back to parameter file.
-echo "fip=$fip" > /etc/wireguard/nextip
+# write current ip back to parameter file, if client configs have been created.
+if [ $modus == "client" ]; then
+    echo "fip=$fip" > /etc/wireguard/nextip
+fi
 
 # change ownership of files to wireguard group if group is active
 if grep -q wireguard /etc/group; then
@@ -182,8 +180,6 @@ fi
 # restart wireguard if changes have been made.
 if [ $restartneeded == 1 ]; then
     restart_wireguard
-else
-    exit 0
 fi
 
 exit 0
